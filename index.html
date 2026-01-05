@@ -72,6 +72,135 @@
         .card-back { background: var(--surface); color: var(--text-main); transform: rotateY(180deg); font-weight: 500; border: 1px solid var(--border); word-break: break-word; }
         .valid-icon { position: absolute; right: 10px; top: 18px; color: var(--success); font-size: 18px; display: none; }
         .invalid-icon { position: absolute; right: 10px; top: 18px; color: var(--danger); font-size: 18px; display: none; }
+        .pfp-container { position: relative; width: 80px; height: 80px; margin: 0 auto 10px; }
+        .pfp-img { width: 100%; height: 100%; border-radius: 50%; object-fit: cover; background: var(--primary); border: 2px solid var(--primary); }
+        .pfp-edit { position: absolute; bottom: 0; right: 0; background: var(--text-main); color: var(--surface); width: 25px; height: 25px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 12px; cursor: pointer; }
+        
+        #splash { background: linear-gradient(135deg, #2962ff 0%, #0039cb 100%); color: white; justify-content: center; align-items: center; text-align: center; overflow: hidden; }
+        .splash-logo { width: 110px; height: 110px; background: rgba(255,255,255,0.15); backdrop-filter: blur(10px); border-radius: 35px; display: flex; align-items: center; justify-content: center; font-size: 45px; color: #fff; margin-bottom: 25px; box-shadow: 0 20px 50px rgba(0,0,0,0.3); animation: float 3s ease-in-out infinite; border: 1px solid rgba(255,255,255,0.2); }
+        .splash-circle { position: absolute; border-radius: 50%; background: rgba(255,255,255,0.05); z-index: -1; }
+        .sc-1 { width: 300px; height: 300px; top: -50px; right: -50px; }
+        .sc-2 { width: 200px; height: 200px; bottom: -20px; left: -20px; }
+        .loader-dots { display: flex; gap: 8px; justify-content: center; margin-top: 20px; }
+        .dot { width: 8px; height: 8px; background: white; border-radius: 50%; animation: bounce 1.4s infinite ease-in-out both; }
+        .dot:nth-child(1) { animation-delay: -0.32s; }
+        .dot:nth-child(2) { animation-delay: -0.16s; }
+        @keyframes float { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-15px); } }
+        @keyframes bounce { 0%, 80%, 100% { transform: scale(0); } 40% { transform: scale(1); } }
+        
+        @keyframes spin { 100% { transform: rotate(360deg); } }
+        .fa-spin-custom { animation: spin 1s linear; }
+    </style>
+</head>
+<body>
+
+    <div id="splash" class="screen active">
+        <div class="splash-circle sc-1"></div>
+        <div class="splash-circle sc-2"></div>
+        <div class="splash-logo"><i class="fa-solid fa-pen-nib"></i></div>
+        <h1 style="font-weight:800; font-size: 32px; letter-spacing: 1px; text-shadow: 0 5px 15px rgba(0,0,0,0.2);">Jupi§o Ink</h1>
+        <p style="opacity:0.8; font-size: 14px; letter-spacing: 2px; margin-top: 5px;">INK YOUR IDEAS</p>
+        <div class="loader-dots"><div class="dot"></div><div class="dot"></div><div class="dot"></div></div>
+        <p id="error-msg" style="display:none; color:#ff8a80; margin-top:20px; font-weight:bold;">Connection Slow...</p>
+        <button id="retry-btn" class="retry-btn" style="background:white; color:var(--primary); font-weight:bold; margin-top:15px;" onclick="location.reload()">Retry</button>
+    </div>
+
+    <div id="auth" class="screen" style="justify-content:center; padding:30px;">
+        <h1 style="color:var(--primary); font-size:36px; margin-bottom:10px;">Welcome</h1>
+        <p style="color:var(--text-sub); margin-bottom:40px;">Login or Register (Data Syncs automatically)</p>
+        <div class="input-group"><input type="number" id="auth-phone" placeholder=" " required><label>Phone Number (Unique ID)</label></div>
+        <div class="input-group"><input type="text" id="auth-name" placeholder=" " required><label>Full Name</label></div>
+        <div class="input-group"><input type="password" id="auth-pass" placeholder=" " required style="padding-right:40px;"><label>Password</label><i class="fa-solid fa-eye password-toggle" onclick="togglePass('auth-pass', this)"></i></div>
+        <button class="btn-main" onclick="register()">Login / Create Account <i class="fa-solid fa-arrow-right"></i></button>
+        <div class="credits"><p>Creator: Tonmoy Kumar Deb</p><p>Made in Lachit Nagar, Guwahati</p></div>
+    </div>
+    
+    <div id="lock-screen" class="screen" style="justify-content:center; padding:30px;">
+        <div style="text-align:center; margin-bottom:30px;"><div style="width:70px; height:70px; background:var(--bg-body); border-radius:50%; margin:0 auto 15px; display:flex; align-items:center; justify-content:center; color:var(--primary); font-size:24px; box-shadow:var(--shadow);"><i class="fa-solid fa-lock"></i></div><h2 id="lock-name" style="color:var(--text-main);">Welcome Back</h2><p style="color:var(--text-sub);">Enter password to unlock</p></div>
+        <div class="input-group"><input type="password" id="unlock-pass" placeholder=" " required style="padding-right:40px;"><label>Password</label><i class="fa-solid fa-eye password-toggle" onclick="togglePass('unlock-pass', this)"></i></div>
+        <button class="btn-main" onclick="unlock()">Unlock App <i class="fa-solid fa-lock-open"></i></button>
+        <p style="text-align:center; margin-top:20px; color:var(--danger); font-size:12px; cursor:pointer;" onclick="resetApp()">Forgot Password?</p>
+    </div>
+
+    <div id="app" class="screen">
+        <header class="app-header">
+            <div class="header-title"><i class="fa-solid fa-pen-nib"></i> <span id="header-txt">Jupi§o</span></div>
+            <div style="display:flex; gap:10px;">
+                <button class="header-btn" id="refresh-btn" style="display:none;" onclick="refreshNotifs()"><i class="fa-solid fa-rotate-right" id="refresh-icon"></i></button>
+                <button class="header-btn" id="back-btn" onclick="nav('home')" style="display:none;"><i class="fa-solid fa-arrow-left"></i></button>
+            </div>
+        </header>
+        
+        <div class="view-container" id="main-view-container">
+            <div id="v-home" class="view active-view">
+                <div class="card" style="background:var(--primary); color:#fff; border:none;"><h2 id="greet-txt">Hello User</h2><p style="opacity:0.8; font-size:14px;">Ready to ink your ideas?</p></div>
+                <h4 style="margin: 20px 0 15px; color:var(--text-sub);">Services</h4>
+                <div class="grid-menu">
+                    <div class="menu-card" onclick="nav('apply')"><div class="menu-icon g-1"><i class="fa-solid fa-file-pen"></i></div><strong>New Order</strong></div>
+                    <div class="menu-card" onclick="nav('status')"><div class="menu-icon g-2"><i class="fa-solid fa-magnifying-glass"></i></div><strong>Tracking</strong></div>
+                    <div class="menu-card" onclick="nav('payments')"><div class="menu-icon g-3"><i class="fa-solid fa-wallet"></i></div><strong>Payments</strong></div>
+                    <div class="menu-card" onclick="nav('refund')"><div class="menu-icon g-4"><i class="fa-solid fa-rotate-left"></i></div><strong>Refund</strong></div>
+                </div>
+            </div>
+            
+            <div id="v-apply" class="view">
+                <h2 style="margin-bottom:20px;">Place Order</h2>
+                <div class="card">
+                    <label style="font-size:12px; color:var(--text-sub); margin-bottom:5px; display:block;">Your Token (Save this)</label>
+                    <div class="token-box"><span id="form-token-display" class="token-val">Generating...</span><button class="btn-sm" style="background:none; border:none; color:var(--primary); font-size:18px;" onclick="copyDraftToken()"><i class="fa-regular fa-copy"></i></button></div>
+                    <div class="input-group"><input type="text" id="a-dept" placeholder=" "><label>Department *</label></div>
+                    <div class="input-group"><input type="text" id="a-coupon" placeholder=" " oninput="checkCoupon()"><label>Coupon Code (Optional)</label><i id="c-valid" class="fa-solid fa-check-circle valid-icon"></i><i id="c-invalid" class="fa-solid fa-circle-xmark invalid-icon"></i></div>
+                    <div style="display:flex; gap:10px;">
+                        <div class="input-group" style="flex:1;"><input type="text" id="a-sec" placeholder=" "><label>Section (Optional)</label></div>
+                        <div class="input-group" style="flex:1;"><select id="a-sem"><option value="" disabled selected></option><option value="1st">1st Sem</option><option value="2nd">2nd Sem</option><option value="3rd">3rd Sem</option><option value="4th">4th Sem</option><option value="5th">5th Sem</option><option value="6th">6th Sem</option><option value="7th">7th Sem</option><option value="8th">8th Sem</option></select><label>Semester *</label></div>
+                    </div>
+                    <div class="input-group"><input type="number" id="a-roll" placeholder=" "><label>Roll No (10 Digit) *</label></div>
+                    <div class="input-group"><input type="password" id="a-phone" placeholder=" " style="padding-right:40px;"><label>WhatsApp (+91) *</label><i class="fa-solid fa-eye password-toggle" onclick="togglePass('a-phone', this)"></i></div>
+                    <div class="input-group"><select id="a-count" onchange="renderWorks()"><option value="1">1 Work</option><option value="2">2 Works</option><option value="3">3 Works</option></select><label>Total Works</label></div>
+                    <div id="work-area"></div>
+                    <button class="btn-main" onclick="submitOrder()">Submit Request <i class="fa-solid fa-paper-plane"></i></button>
+                </div>
+            </div>
+            
+            <div id="v-status" class="view"><div class="input-group"><input type="text" id="s-search" placeholder=" " onkeyup="loadOrders('status')"><label>Search Token Number</label></div><div id="list-status"><p class="privacy-msg"><i class="fa-solid fa-lock"></i><br>Enter your Token ID to track details.</p></div></div>
+            <div id="v-payments" class="view"><div class="input-group"><select id="pay-filter" onchange="loadOrders('pay')"><option value="" disabled selected></option><option value="advance">Advance Payment</option><option value="final">Final Payment        .input-group input:focus ~ label, .input-group input:not(:placeholder-shown) ~ label, .input-group select:focus ~ label, .input-group select:valid ~ label { top: -10px; font-size: 12px; color: var(--primary); font-weight: 600; background: var(--surface); padding: 0 5px; margin-left: 10px; border-radius: 4px; }
+        .password-toggle { position: absolute; right: 15px; top: 18px; color: var(--text-sub); cursor: pointer; font-size: 16px; z-index: 5; }
+        .price-table { width: 100%; margin-top: 10px; font-size: 13px; color: var(--text-sub); border-top: 1px dashed var(--border); padding-top: 10px; }
+        .price-row { display: flex; justify-content: space-between; margin-bottom: 4px; }
+        .price-total { font-weight: 700; color: var(--text-main); border-top: 1px solid var(--border); padding-top: 4px; margin-top: 4px; }
+        .pay-highlight { color: var(--primary); font-weight: 700; font-size: 14px; margin-top: 5px; text-align: right; }
+        .grid-menu { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; }
+        .menu-card { background: var(--surface); border-radius: var(--radius); padding: 20px; text-align: center; box-shadow: var(--shadow); display: flex; flex-direction: column; align-items: center; }
+        .menu-icon { width: 50px; height: 50px; border-radius: 15px; margin-bottom: 10px; display: flex; align-items: center; justify-content: center; font-size: 22px; color: white; }
+        .g-1 { background: linear-gradient(135deg, #2962ff, #82b1ff); }
+        .g-2 { background: linear-gradient(135deg, #00b894, #55efc4); }
+        .g-3 { background: linear-gradient(135deg, #fdcb6e, #ffeaa7); }
+        .g-4 { background: linear-gradient(135deg, #ff5252, #ff8a80); }
+        .bottom-nav { position: fixed; bottom: 20px; left: 20px; right: 20px; height: 70px; background: var(--surface); display: flex; justify-content: space-around; align-items: center; border-radius: 25px; box-shadow: 0 10px 30px rgba(0,0,0,0.1); z-index: 100; }
+        .nav-item { position: relative; display: flex; flex-direction: column; align-items: center; justify-content: center; color: var(--text-sub); font-size: 9px; gap: 4px; padding: 10px; flex: 1; border-radius: 16px; }
+        .nav-item.active { color: var(--primary); background: rgba(41, 98, 255, 0.1); }
+        .nav-item i { font-size: 18px; }
+        .notif-dot { position: absolute; top: 10px; right: 20px; width: 8px; height: 8px; background: var(--danger); border-radius: 50%; display: none; }
+        .credits { position: absolute; bottom: 20px; left: 0; width: 100%; text-align: center; font-size: 11px; color: var(--text-sub); opacity: 0.7; }
+        .scratch-container { position: relative; width: 100%; height: 200px; border-radius: 20px; overflow: hidden; margin: 20px 0; box-shadow: 0 10px 20px rgba(0,0,0,0.1); touch-action: none; background: #eee; }
+        .scratch-result { position: absolute; inset: 0; background: linear-gradient(135deg, #2962ff, #82b1ff); display: flex; flex-direction: column; align-items: center; justify-content: center; color: white; z-index: 1; }
+        canvas#scratch-canvas { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 2; cursor: pointer; touch-action: none; }
+        .work-item { border: 1px solid var(--border); padding: 15px; border-radius: 16px; margin-bottom: 15px; background: var(--surface); }
+        .token-box { display: flex; align-items: center; justify-content: space-between; background: var(--input-bg); padding: 12px 15px; border-radius: 16px; margin-bottom: 20px; border: 1px dashed var(--primary); }
+        .token-val { font-size: 18px; font-weight: 700; color: var(--text-main); letter-spacing: 1px; }
+        #custom-alert-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.6); z-index: 9999; display: none; align-items: center; justify-content: center; backdrop-filter: blur(5px); }
+        .custom-alert-box { background: var(--surface); width: 85%; max-width: 320px; border-radius: 20px; padding: 25px; text-align: center; box-shadow: 0 20px 50px rgba(0,0,0,0.3); animation: popIn 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
+        @keyframes popIn { from { transform: scale(0.8); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+        #error-msg { display:none; color:var(--danger); font-size:14px; margin-top:10px; }
+        .retry-btn { margin-top:10px; padding:10px 20px; background:var(--surface); border:1px solid var(--border); border-radius:10px; color:var(--text-main); display:none; }
+        .game-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 5px; margin-top: 15px; }
+        .game-card { aspect-ratio: 1; background: var(--primary); border-radius: 8px; cursor: pointer; position: relative; transform-style: preserve-3d; transition: transform 0.6s; }
+        .game-card.flipped { transform: rotateY(180deg); }
+        .card-face { position: absolute; width: 100%; height: 100%; backface-visibility: hidden; border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 10px; text-align: center; padding: 2px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
+        .card-front { background: linear-gradient(135deg, #2962ff, #82b1ff); color: white; font-weight: bold; font-size: 14px; }
+        .card-back { background: var(--surface); color: var(--text-main); transform: rotateY(180deg); font-weight: 500; border: 1px solid var(--border); word-break: break-word; }
+        .valid-icon { position: absolute; right: 10px; top: 18px; color: var(--success); font-size: 18px; display: none; }
+        .invalid-icon { position: absolute; right: 10px; top: 18px; color: var(--danger); font-size: 18px; display: none; }
         
         .pfp-container { position: relative; width: 80px; height: 80px; margin: 0 auto 10px; }
         .pfp-img { width: 100%; height: 100%; border-radius: 50%; object-fit: cover; background: var(--primary); border: 2px solid var(--primary); }
