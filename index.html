@@ -1,1 +1,683 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>Jupi§o Ink</title>
+    <link rel="manifest" href="manifest.json">
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js" onerror="window.scriptLoadError=true"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js" onerror="window.scriptLoadError=true"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-messaging-compat.js" onerror="window.scriptLoadError=true"></script>
 
+    <style>
+        /* Royal Blue Theme */
+        :root { --primary: #2962ff; --primary-dark: #0039cb; --bg-body: #F0F4FA; --surface: #ffffff; --text-main: #2d3436; --text-sub: #636e72; --border: #e3f2fd; --input-bg: #f5f9ff; --success: #00b894; --info: #2962ff; --warning: #fdcb6e; --danger: #ff5252; --wait: #636e72; --shadow: 0 10px 30px rgba(41, 98, 255, 0.15); --radius: 20px; --header-h: 70px; }
+        body.dark-mode { --bg-body: #0d1b2a; --surface: #1b263b; --text-main: #e0e1dd; --text-sub: #778da9; --border: #415a77; --input-bg: #22334b; --shadow: 0 10px 30px rgba(0,0,0,0.5); }
+        
+        * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; font-family: 'Outfit', sans-serif; user-select: none; }
+        body { background-color: var(--bg-body); color: var(--text-main); height: 100vh; overflow: hidden; transition: background 0.3s ease; }
+        .screen { position: fixed; inset: 0; z-index: 10; background: var(--bg-body); display: none; flex-direction: column; opacity: 0; transition: opacity 0.3s; }
+        .screen.active { display: flex; opacity: 1; z-index: 20; }
+        .view-container { flex: 1; overflow-y: auto; padding: 20px; padding-bottom: 120px; padding-top: var(--header-h); transition: 0.5s; }
+        .view { display: none; animation: slideUp 0.3s cubic-bezier(0.16, 1, 0.3, 1); }
+        .view.active-view { display: block; }
+        @keyframes slideUp { from { opacity: 0; transform: translateY(30px); } to { opacity: 1; transform: translateY(0); } }
+        .app-header { position: fixed; top: 0; left: 0; width: 100%; height: var(--header-h); display: flex; align-items: center; justify-content: space-between; padding: 0 20px; z-index: 100; background: rgba(255, 255, 255, 0.9); backdrop-filter: blur(12px); border-bottom: 1px solid rgba(0,0,0,0.05); }
+        body.dark-mode .app-header { background: rgba(27, 38, 59, 0.9); border-bottom: 1px solid rgba(255,255,255,0.05); }
+        .header-title { font-weight: 700; font-size: 22px; color: var(--primary); display: flex; align-items: center; gap: 8px; }
+        .header-btn { width: 42px; height: 42px; border-radius: 14px; background: var(--surface); color: var(--text-main); display: flex; align-items: center; justify-content: center; font-size: 18px; box-shadow: 0 4px 10px rgba(0,0,0,0.05); border: none; cursor: pointer; }
+        .card { background: var(--surface); border-radius: var(--radius); padding: 20px; box-shadow: var(--shadow); margin-bottom: 20px; position: relative; }
+        .btn-main { width: 100%; padding: 16px; border-radius: 16px; background: var(--primary); color: #fff; font-size: 16px; font-weight: 600; border: none; box-shadow: 0 5px 15px rgba(41, 98, 255, 0.3); display: flex; align-items: center; justify-content: center; gap: 10px; margin-top: 10px; }
+        .input-group { position: relative; margin-bottom: 30px; margin-top: 15px; } 
+        .input-group input, .input-group select { width: 100%; padding: 16px; font-size: 16px; background: var(--input-bg); border: 2px solid transparent; border-radius: 16px; outline: none; transition: 0.3s; color: var(--text-main); appearance: none; -webkit-appearance: none; }
+        .input-group label { position: absolute; left: 16px; top: 18px; color: var(--text-sub); font-size: 16px; pointer-events: none; transition: 0.3s; padding: 0 5px; background: transparent; }
+        .input-group input:focus, .input-group select:focus { border-color: var(--primary); background: var(--surface); }
+        .input-group input:focus ~ label, .input-group input:not(:placeholder-shown) ~ label, .input-group select:focus ~ label, .input-group select:valid ~ label { top: -10px; font-size: 12px; color: var(--primary); font-weight: 600; background: var(--surface); padding: 0 5px; margin-left: 10px; border-radius: 4px; }
+        .password-toggle { position: absolute; right: 15px; top: 18px; color: var(--text-sub); cursor: pointer; font-size: 16px; z-index: 5; }
+        .price-table { width: 100%; margin-top: 10px; font-size: 13px; color: var(--text-sub); border-top: 1px dashed var(--border); padding-top: 10px; }
+        .price-row { display: flex; justify-content: space-between; margin-bottom: 4px; }
+        .price-total { font-weight: 700; color: var(--text-main); border-top: 1px solid var(--border); padding-top: 4px; margin-top: 4px; }
+        .pay-highlight { color: var(--primary); font-weight: 700; font-size: 14px; margin-top: 5px; text-align: right; }
+        .grid-menu { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; }
+        .menu-card { background: var(--surface); border-radius: var(--radius); padding: 20px; text-align: center; box-shadow: var(--shadow); display: flex; flex-direction: column; align-items: center; }
+        .menu-icon { width: 50px; height: 50px; border-radius: 15px; margin-bottom: 10px; display: flex; align-items: center; justify-content: center; font-size: 22px; color: white; }
+        .g-1 { background: linear-gradient(135deg, #2962ff, #82b1ff); }
+        .g-2 { background: linear-gradient(135deg, #00b894, #55efc4); }
+        .g-3 { background: linear-gradient(135deg, #fdcb6e, #ffeaa7); }
+        .g-4 { background: linear-gradient(135deg, #ff5252, #ff8a80); }
+        .bottom-nav { position: fixed; bottom: 20px; left: 20px; right: 20px; height: 70px; background: var(--surface); display: flex; justify-content: space-around; align-items: center; border-radius: 25px; box-shadow: 0 10px 30px rgba(0,0,0,0.1); z-index: 100; }
+        .nav-item { position: relative; display: flex; flex-direction: column; align-items: center; justify-content: center; color: var(--text-sub); font-size: 9px; gap: 4px; padding: 10px; flex: 1; border-radius: 16px; }
+        .nav-item.active { color: var(--primary); background: rgba(41, 98, 255, 0.1); }
+        .nav-item i { font-size: 18px; }
+        .notif-dot { position: absolute; top: 10px; right: 20px; width: 8px; height: 8px; background: var(--danger); border-radius: 50%; display: none; }
+        .credits { position: absolute; bottom: 20px; left: 0; width: 100%; text-align: center; font-size: 11px; color: var(--text-sub); opacity: 0.7; }
+        .scratch-container { position: relative; width: 100%; height: 200px; border-radius: 20px; overflow: hidden; margin: 20px 0; box-shadow: 0 10px 20px rgba(0,0,0,0.1); touch-action: none; background: #eee; }
+        .scratch-result { position: absolute; inset: 0; background: linear-gradient(135deg, #2962ff, #82b1ff); display: flex; flex-direction: column; align-items: center; justify-content: center; color: white; z-index: 1; }
+        canvas#scratch-canvas { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 2; cursor: pointer; touch-action: none; }
+        .work-item { border: 1px solid var(--border); padding: 15px; border-radius: 16px; margin-bottom: 15px; background: var(--surface); }
+        .token-box { display: flex; align-items: center; justify-content: space-between; background: var(--input-bg); padding: 12px 15px; border-radius: 16px; margin-bottom: 20px; border: 1px dashed var(--primary); }
+        .token-val { font-size: 18px; font-weight: 700; color: var(--text-main); letter-spacing: 1px; }
+        #custom-alert-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.6); z-index: 9999; display: none; align-items: center; justify-content: center; backdrop-filter: blur(5px); }
+        .custom-alert-box { background: var(--surface); width: 85%; max-width: 320px; border-radius: 20px; padding: 25px; text-align: center; box-shadow: 0 20px 50px rgba(0,0,0,0.3); animation: popIn 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
+        @keyframes popIn { from { transform: scale(0.8); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+        #error-msg { display:none; color:var(--danger); font-size:14px; margin-top:10px; }
+        .retry-btn { margin-top:10px; padding:10px 20px; background:var(--surface); border:1px solid var(--border); border-radius:10px; color:var(--text-main); display:none; }
+        .game-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 5px; margin-top: 15px; }
+        .game-card { aspect-ratio: 1; background: var(--primary); border-radius: 8px; cursor: pointer; position: relative; transform-style: preserve-3d; transition: transform 0.6s; }
+        .game-card.flipped { transform: rotateY(180deg); }
+        .card-face { position: absolute; width: 100%; height: 100%; backface-visibility: hidden; border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 10px; text-align: center; padding: 2px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
+        .card-front { background: linear-gradient(135deg, #2962ff, #82b1ff); color: white; font-weight: bold; font-size: 14px; }
+        .card-back { background: var(--surface); color: var(--text-main); transform: rotateY(180deg); font-weight: 500; border: 1px solid var(--border); word-break: break-word; }
+        .valid-icon { position: absolute; right: 10px; top: 18px; color: var(--success); font-size: 18px; display: none; }
+        .invalid-icon { position: absolute; right: 10px; top: 18px; color: var(--danger); font-size: 18px; display: none; }
+        .pfp-container { position: relative; width: 80px; height: 80px; margin: 0 auto 10px; }
+        .pfp-img { width: 100%; height: 100%; border-radius: 50%; object-fit: cover; background: var(--primary); border: 2px solid var(--primary); }
+        .pfp-edit { position: absolute; bottom: 0; right: 0; background: var(--text-main); color: var(--surface); width: 25px; height: 25px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 12px; cursor: pointer; }
+        
+        #splash { background: linear-gradient(135deg, #2962ff 0%, #0039cb 100%); color: white; justify-content: center; align-items: center; text-align: center; overflow: hidden; }
+        .splash-logo { width: 110px; height: 110px; background: rgba(255,255,255,0.15); backdrop-filter: blur(10px); border-radius: 35px; display: flex; align-items: center; justify-content: center; font-size: 45px; color: #fff; margin-bottom: 25px; box-shadow: 0 20px 50px rgba(0,0,0,0.3); animation: float 3s ease-in-out infinite; border: 1px solid rgba(255,255,255,0.2); }
+        .splash-circle { position: absolute; border-radius: 50%; background: rgba(255,255,255,0.05); z-index: -1; }
+        .sc-1 { width: 300px; height: 300px; top: -50px; right: -50px; }
+        .sc-2 { width: 200px; height: 200px; bottom: -20px; left: -20px; }
+        .loader-dots { display: flex; gap: 8px; justify-content: center; margin-top: 20px; }
+        .dot { width: 8px; height: 8px; background: white; border-radius: 50%; animation: bounce 1.4s infinite ease-in-out both; }
+        .dot:nth-child(1) { animation-delay: -0.32s; }
+        .dot:nth-child(2) { animation-delay: -0.16s; }
+        @keyframes float { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-15px); } }
+        @keyframes bounce { 0%, 80%, 100% { transform: scale(0); } 40% { transform: scale(1); } }
+        
+        @keyframes spin { 100% { transform: rotate(360deg); } }
+        .fa-spin-custom { animation: spin 1s linear; }
+    </style>
+</head>
+<body>
+
+    <div id="splash" class="screen active">
+        <div class="splash-circle sc-1"></div>
+        <div class="splash-circle sc-2"></div>
+        <div class="splash-logo"><i class="fa-solid fa-pen-nib"></i></div>
+        <h1 style="font-weight:800; font-size: 32px; letter-spacing: 1px; text-shadow: 0 5px 15px rgba(0,0,0,0.2);">Jupi§o Ink</h1>
+        <p style="opacity:0.8; font-size: 14px; letter-spacing: 2px; margin-top: 5px;">INK YOUR IDEAS</p>
+        <div class="loader-dots"><div class="dot"></div><div class="dot"></div><div class="dot"></div></div>
+        <p id="error-msg" style="display:none; color:#ff8a80; margin-top:20px; font-weight:bold;">Connection Slow...</p>
+        <button id="retry-btn" class="retry-btn" style="background:white; color:var(--primary); font-weight:bold; margin-top:15px;" onclick="location.reload()">Retry</button>
+    </div>
+
+    <div id="auth" class="screen" style="justify-content:center; padding:30px;">
+        <h1 style="color:var(--primary); font-size:36px; margin-bottom:10px;">Welcome</h1>
+        <p style="color:var(--text-sub); margin-bottom:40px;">Login or Register (Data Syncs automatically)</p>
+        <div class="input-group"><input type="number" id="auth-phone" placeholder=" " required><label>Phone Number (Unique ID)</label></div>
+        <div class="input-group"><input type="text" id="auth-name" placeholder=" " required><label>Full Name</label></div>
+        <div class="input-group"><input type="password" id="auth-pass" placeholder=" " required style="padding-right:40px;"><label>Password</label><i class="fa-solid fa-eye password-toggle" onclick="togglePass('auth-pass', this)"></i></div>
+        <button class="btn-main" onclick="register()">Login / Create Account <i class="fa-solid fa-arrow-right"></i></button>
+        <div class="credits"><p>Creator: Tonmoy Kumar Deb</p><p>Made in Lachit Nagar, Guwahati</p></div>
+    </div>
+    
+    <div id="lock-screen" class="screen" style="justify-content:center; padding:30px;">
+        <div style="text-align:center; margin-bottom:30px;"><div style="width:70px; height:70px; background:var(--bg-body); border-radius:50%; margin:0 auto 15px; display:flex; align-items:center; justify-content:center; color:var(--primary); font-size:24px; box-shadow:var(--shadow);"><i class="fa-solid fa-lock"></i></div><h2 id="lock-name" style="color:var(--text-main);">Welcome Back</h2><p style="color:var(--text-sub);">Enter password to unlock</p></div>
+        <div class="input-group"><input type="password" id="unlock-pass" placeholder=" " required style="padding-right:40px;"><label>Password</label><i class="fa-solid fa-eye password-toggle" onclick="togglePass('unlock-pass', this)"></i></div>
+        <button class="btn-main" onclick="unlock()">Unlock App <i class="fa-solid fa-lock-open"></i></button>
+        <p style="text-align:center; margin-top:20px; color:var(--danger); font-size:12px; cursor:pointer;" onclick="resetApp()">Forgot Password?</p>
+    </div>
+
+    <div id="app" class="screen">
+        <header class="app-header">
+            <div class="header-title"><i class="fa-solid fa-pen-nib"></i> <span id="header-txt">Jupi§o</span></div>
+            <div style="display:flex; gap:10px;">
+                <button class="header-btn" id="refresh-btn" style="display:none;" onclick="refreshNotifs()"><i class="fa-solid fa-rotate-right" id="refresh-icon"></i></button>
+                <button class="header-btn" id="back-btn" onclick="nav('home')" style="display:none;"><i class="fa-solid fa-arrow-left"></i></button>
+            </div>
+        </header>
+        
+        <div class="view-container" id="main-view-container">
+            <div id="v-home" class="view active-view">
+                <div class="card" style="background:var(--primary); color:#fff; border:none;"><h2 id="greet-txt">Hello User</h2><p style="opacity:0.8; font-size:14px;">Ready to ink your ideas?</p></div>
+                <h4 style="margin: 20px 0 15px; color:var(--text-sub);">Services</h4>
+                <div class="grid-menu">
+                    <div class="menu-card" onclick="nav('apply')"><div class="menu-icon g-1"><i class="fa-solid fa-file-pen"></i></div><strong>New Order</strong></div>
+                    <div class="menu-card" onclick="nav('status')"><div class="menu-icon g-2"><i class="fa-solid fa-magnifying-glass"></i></div><strong>Tracking</strong></div>
+                    <div class="menu-card" onclick="nav('payments')"><div class="menu-icon g-3"><i class="fa-solid fa-wallet"></i></div><strong>Payments</strong></div>
+                    <div class="menu-card" onclick="nav('refund')"><div class="menu-icon g-4"><i class="fa-solid fa-rotate-left"></i></div><strong>Refund</strong></div>
+                </div>
+            </div>
+            
+            <div id="v-apply" class="view">
+                <h2 style="margin-bottom:20px;">Place Order</h2>
+                <div class="card">
+                    <label style="font-size:12px; color:var(--text-sub); margin-bottom:5px; display:block;">Your Token (Save this)</label>
+                    <div class="token-box"><span id="form-token-display" class="token-val">Generating...</span><button class="btn-sm" style="background:none; border:none; color:var(--primary); font-size:18px;" onclick="copyDraftToken()"><i class="fa-regular fa-copy"></i></button></div>
+                    <div class="input-group"><input type="text" id="a-dept" placeholder=" "><label>Department *</label></div>
+                    <div class="input-group"><input type="text" id="a-coupon" placeholder=" " oninput="checkCoupon()"><label>Coupon Code (Optional)</label><i id="c-valid" class="fa-solid fa-check-circle valid-icon"></i><i id="c-invalid" class="fa-solid fa-circle-xmark invalid-icon"></i></div>
+                    <div style="display:flex; gap:10px;">
+                        <div class="input-group" style="flex:1;"><input type="text" id="a-sec" placeholder=" "><label>Section (Optional)</label></div>
+                        <div class="input-group" style="flex:1;"><select id="a-sem"><option value="" disabled selected></option><option value="1st">1st Sem</option><option value="2nd">2nd Sem</option><option value="3rd">3rd Sem</option><option value="4th">4th Sem</option><option value="5th">5th Sem</option><option value="6th">6th Sem</option><option value="7th">7th Sem</option><option value="8th">8th Sem</option></select><label>Semester *</label></div>
+                    </div>
+                    <div class="input-group"><input type="number" id="a-roll" placeholder=" "><label>Roll No (10 Digit) *</label></div>
+                    <div class="input-group"><input type="password" id="a-phone" placeholder=" " style="padding-right:40px;"><label>WhatsApp (+91) *</label><i class="fa-solid fa-eye password-toggle" onclick="togglePass('a-phone', this)"></i></div>
+                    <div class="input-group"><select id="a-count" onchange="renderWorks()"><option value="1">1 Work</option><option value="2">2 Works</option><option value="3">3 Works</option></select><label>Total Works</label></div>
+                    <div id="work-area"></div>
+                    <button class="btn-main" onclick="submitOrder()">Submit Request <i class="fa-solid fa-paper-plane"></i></button>
+                </div>
+            </div>
+            
+            <div id="v-status" class="view"><div class="input-group"><input type="text" id="s-search" placeholder=" " onkeyup="loadOrders('status')"><label>Search Token Number</label></div><div id="list-status"><p class="privacy-msg"><i class="fa-solid fa-lock"></i><br>Enter your Token ID to track details.</p></div></div>
+            <div id="v-payments" class="view"><div class="input-group"><select id="pay-filter" onchange="loadOrders('pay')"><option value="" disabled selected></option><option value="advance">Advance Payment</option><option value="final">Final Payment</option><option value="receipt">Receipts</option></select><label>View Type</label></div><div class="input-group"><input type="text" id="p-search" placeholder=" " onkeyup="loadOrders('pay')"><label>Enter Token to View Bill</label></div><div id="list-pay"><p class="privacy-msg"><i class="fa-solid fa-lock"></i><br>Enter your Token ID to view bill.</p></div></div>
+            <div id="v-refund" class="view"><div class="card"><h3 style="color:var(--danger); margin-bottom:10px;">Cancellation</h3><p style="font-size:13px; color:var(--text-sub); margin-bottom:20px;">Refund of 40% is given if work is started.</p><div class="input-group"><input type="text" id="r-token" placeholder=" "><label>Token ID</label></div><div class="input-group"><input type="text" id="r-upi" placeholder=" "><label>UPI ID (Optional if Unpaid)</label></div><div class="input-group"><select id="r-reason" onchange="toggleRefundInput()"><option>Mistake in Order</option><option>Cancelled by College</option><option value="Other">Other</option></select><label>Reason</label></div><div id="r-other-div" class="input-group" style="display:none;"><input type="text" id="r-other-val" placeholder=" "><label>Specify Reason</label></div><button class="btn-main" style="background:var(--danger)" onclick="reqRefund()">Request Refund</button></div></div>
+            
+            <div id="v-offers" class="view">
+                <h2 style="margin-bottom:20px;">Premium Offers</h2>
+                <div class="card" id="offer-login"><p style="font-size:14px; margin-bottom:15px;">Unlock exclusive rewards for ₹89 only!</p><div class="input-group"><input type="text" id="offer-token" placeholder=" "><label>Token ID</label></div><button class="btn-main" onclick="requestPremium()">Pay ₹89 to Unlock <i class="fa-solid fa-lock"></i></button><p id="offer-status" style="margin-top:15px; color:var(--wait); text-align:center; display:none;">Request Sent. Waiting for Owner...</p></div>
+                <div class="card" id="offer-game" style="display:none;"><p style="text-align:center; font-weight:bold; color:var(--primary); margin-bottom:10px;">Tap a card to reveal your prize!</p><div class="game-grid" id="game-board"></div>
+                    <div id="claim-area" style="display:none; margin-top:20px; border-top:1px dashed var(--border); padding-top:20px; text-align:center;">
+                        <h2 id="won-text" style="color:var(--primary); font-size:28px; font-weight:800; margin-bottom:10px;">PRIZE NAME</h2>
+                        <p style="color:var(--danger); font-weight:bold; font-size:14px; margin-bottom:20px; border: 1px solid var(--danger); padding: 10px; border-radius: 10px; background: rgba(255, 82, 82, 0.1);">⚠️ Don't close the app without claiming your reward!</p>
+                        <div class="input-group"><input type="text" id="offer-upi" placeholder=" "><label>UPI ID (Optional)</label></div>
+                        <button class="btn-main" onclick="claimOffer()">Claim Reward</button>
+                    </div>
+                </div>
+            </div>
+            
+            <div id="v-rewards" class="view"><h2 style="margin-bottom:20px;">Cashback Rewards</h2><div class="card"><p style="margin-bottom:20px; color:var(--text-sub); font-size:13px;">Enter your Token ID to check for rewards. Each token can only claim once.</p><div class="input-group"><input type="text" id="reward-token" placeholder=" "><label>Token ID</label></div><button class="btn-main" onclick="checkReward()">Check Reward <i class="fa-solid fa-gift"></i></button><div id="scratch-wrapper" style="display:none; margin-top:20px;"><div class="scratch-container"><div class="scratch-result"><h2 id="won-amt" style="font-size:32px;">₹0</h2><p style="font-size:12px; opacity:0.9;">Cashback Won!</p></div><canvas id="scratch-canvas"></canvas></div><div id="claim-form" style="display:none; animation:popIn 0.3s; margin-top:15px;"><div class="input-group"><input type="text" id="reward-upi-scratch" placeholder=" "><label>Your UPI ID</label></div><button class="btn-main" style="background:var(--success);" onclick="claimScratchReward()">Claim Cashback</button></div></div></div></div>
+            
+            <!-- NOTIFICATIONS TAB (UPDATED: CLEANER UI) -->
+            <div id="v-notifications" class="view">
+                <h2 style="margin-bottom:15px;">Alerts</h2>
+                <div id="notif-list"></div>
+            </div>
+            
+            <div id="v-settings" class="view">
+                <div class="card" style="text-align:center;">
+                    <div class="pfp-container">
+                        <img id="profile-img-display" src="" class="pfp-img" onerror="this.src='https://img.icons8.com/color/96/user.png'">
+                        <div class="pfp-edit" onclick="document.getElementById('p-file').click()"><i class="fa-solid fa-camera"></i></div>
+                        <input type="file" id="p-file" accept="image/*" hidden onchange="uploadPic(this)">
+                    </div>
+                    <h3 id="p-name">User</h3><p id="p-phone" style="font-size:12px; color:var(--text-sub); margin-top:5px;"></p>
+                </div>
+                <div class="card" onclick="nav('contact')" style="display:flex;align-items:center;gap:15px;cursor:pointer;margin-bottom:10px;"><i class="fa-solid fa-headset" style="color:var(--primary);font-size:20px;"></i><strong>Contact Support</strong></div>
+                <div class="card">
+                    <div style="display:flex; justify-content:space-between; margin-bottom:20px;"><span>Dark Theme</span><button class="btn-main" style="width:auto; padding:5px 15px; font-size:12px;" onclick="toggleTheme()">Toggle</button></div>
+                    <h4 style="margin-bottom:15px;">Update Password</h4>
+                    <div class="input-group"><input type="password" id="p-old" placeholder=" "><label>Old Password</label></div>
+                    <div class="input-group"><input type="password" id="p-new" placeholder=" " style="padding-right:40px;"><label>New Password</label><i class="fa-solid fa-eye password-toggle" onclick="togglePass('p-new', this)"></i></div>
+                    <div class="input-group"><input type="password" id="p-confirm" placeholder=" " style="padding-right:40px;"><label>Confirm Password</label><i class="fa-solid fa-eye password-toggle" onclick="togglePass('p-confirm', this)"></i></div>
+                    <button class="btn-main" style="padding:12px;" onclick="changePass()">Save</button>
+                </div>
+                <div style="text-align:center; margin:20px 0; color:var(--text-sub); font-size:12px;"><p><strong>Jupi§o Ink Customer v1.0.0</strong></p><p>Creator: Tonmoy Kumar Deb</p><p>Made in Lachit Nagar, Guwahati</p></div><button class="btn-main" style="background:transparent; color:var(--danger); border:1px solid var(--danger); box-shadow:none;" onclick="logout()">Lock App</button>
+            </div>
+            
+            <div id="v-contact" class="view">
+                <div style="margin-top: 20px;">
+                    <a href="https://instagram.com/ALEXTECHNER" target="_blank" class="card" style="display:flex;align-items:center;gap:15px;text-decoration:none;color:var(--text-main);"><i class="fa-brands fa-instagram" style="font-size:24px;color:#E1306C;"></i><div><strong>Instagram</strong><br><small style="color:var(--text-sub)">@ALEXTECHNER</small></div></a>
+                    <a href="https://wa.me/916901983382" target="_blank" class="card" style="display:flex;align-items:center;gap:15px;text-decoration:none;color:var(--text-main);"><i class="fa-brands fa-whatsapp" style="font-size:24px;color:#25D366;"></i><div><strong>WhatsApp</strong><br><small style="color:var(--text-sub)">+91 6901983382</small></div></a>
+                    <a href="mailto:softink.notes@gmail.com" class="card" style="display:flex;align-items:center;gap:15px;text-decoration:none;color:var(--text-main);"><i class="fa-regular fa-envelope" style="font-size:24px;color:#EA4335;"></i><div><strong>Email</strong><br><small style="color:var(--text-sub)">softink.notes@gmail.com</small></div></a>
+                </div>
+            </div>
+        </div>
+        <nav class="bottom-nav"><div class="nav-item active" onclick="nav('home', this)"><i class="fa-solid fa-house"></i><span>Home</span></div><div class="nav-item" onclick="nav('notifications', this)"><i class="fa-solid fa-bell"></i><span>Alerts</span><span id="notif-dot" class="notif-dot"></span></div><div class="nav-item" onclick="nav('offers', this)"><i class="fa-solid fa-star"></i><span>Offers</span></div><div class="nav-item" onclick="nav('rewards', this)"><i class="fa-solid fa-gift"></i><span>Rewards</span></div><div class="nav-item" onclick="nav('settings', this)"><i class="fa-solid fa-user"></i><span>Profile</span></div></nav>
+    </div>
+
+    <div id="receipt-modal" class="screen" style="background:rgba(0,0,0,0.8); z-index:200; justify-content:center; padding:20px;"><div class="card" style="width:100%; max-height:85vh; overflow-y:auto;"><div id="receipt-content"></div><button class="btn-main" onclick="document.getElementById('receipt-modal').classList.remove('active')">Close</button></div></div>
+    <div id="custom-alert-overlay"><div class="custom-alert-box"><h3 id="alert-title">Jupi§o</h3><p id="alert-msg" style="color:var(--text-sub); margin:10px 0 20px;">Msg</p><div id="alert-actions" class="alert-btn-row"><button class="btn-main" onclick="closeAlert()">OK</button></div></div></div>
+
+    <script>
+        const SERVER_KEY = 'PASTE_YOUR_SERVER_KEY_HERE';
+        let db=null, messaging=null, app={user:null, tokens:[], theme:'light', notifHistory:[], currentDraftToken:null, currentReceiptToken:null, activeRewardToken:null, wonAmount:0, activeOfferToken:null, wonPrize:null};
+        let appLoaded=false; 
+        const sndClick = new Audio('https://www.soundjay.com/buttons/sounds/button-16.mp3');
+        const sndMusic = new Audio('https://www.soundjay.com/free-music/midnight-ride-01a.mp3'); 
+        const notifSound=new Audio('https://www.soundjay.com/misc/sounds/writing-on-paper-1.mp3');
+
+        // HISTORY NAVIGATION & BACK BUTTON LOGIC
+        window.history.replaceState({view: 'home'}, null, "");
+        window.onpopstate = function(e) {
+            if(e.state && e.state.view) {
+                manualNav(e.state.view);
+            } else {
+                manualNav('home'); 
+            }
+        };
+
+        function manualNav(v) {
+            document.querySelectorAll('.view').forEach(x=>x.classList.remove('active-view'));
+            document.getElementById('v-'+v).classList.add('active-view');
+            updateHeader(v);
+        }
+
+        document.addEventListener('click', () => sndClick.play().catch(()=>{}));
+
+        setTimeout(()=>{if(!appLoaded){if(localStorage.getItem('user'))startApp(false);else{document.getElementById('error-msg').style.display='block';document.getElementById('retry-btn').style.display='block';}}},5000);
+
+        window.onload=()=>{
+            try{
+                const config={apiKey:"AIzaSyAaVE3a0UCbvIVBmB_aFK0JV9hpCGNyHKY",authDomain:"jupiso-ink.firebaseapp.com",databaseURL:"https://jupiso-ink-default-rtdb.firebaseio.com",projectId:"jupiso-ink",storageBucket:"jupiso-ink.firebasestorage.app",messagingSenderId:"169259221620",appId:"1:169259221620:web:78022c0eb09fe505d78721",measurementId:"G-1Q2DGX0G9F"};
+              if(typeof firebase!=='undefined'){ firebase.initializeApp(config); db=firebase.database(); messaging=firebase.messaging(); }
+                const u=localStorage.getItem('user'); app.user=u?JSON.parse(u):null;
+                app.tokens=JSON.parse(localStorage.getItem('tokens'))||[];
+                app.notifHistory=JSON.parse(localStorage.getItem('notifHistory'))||[];
+                app.theme=localStorage.getItem('theme')||'light';
+                if(app.theme==='dark')document.body.classList.add('dark-mode');
+                
+                // SERVICE WORKER REGISTRATION
+                if ('serviceWorker' in navigator) {
+                    navigator.serviceWorker.register('firebase-messaging-sw.js')
+                    .then(reg => console.log('SW Registered', reg))
+                    .catch(err => console.log('SW Failed', err));
+                }
+
+                setTimeout(()=>startApp(true),1500);
+            }catch(e){startApp(false);}
+        };
+
+        function startApp(success){
+            appLoaded=true; document.getElementById('splash').classList.remove('active');
+            if("Notification" in window) Notification.requestPermission();
+            if(app.user){
+                document.getElementById('lock-name').innerText=`Hi, ${app.user.name}`;
+                document.getElementById('lock-screen').classList.add('active');
+                if(success && messaging) setupFCM();
+                if(success && db) syncNotifications();
+                nav('home');
+            }else{document.getElementById('auth').classList.add('active');}
+        }
+        function setupFCM() { messaging.getToken().then(token => app.fcmToken = token); messaging.onMessage(payload => { notifSound.play(); pushNotify("System", payload.notification.body); }); }
+        function sendToOwner(title, body) { db.ref('adminSettings/ownerFcm').once('value', s => { const ownerToken = s.val(); if(ownerToken) sendPush(ownerToken, title, body); }); }
+        function sendPush(to, title, body) { fetch('https://fcm.googleapis.com/fcm/send', { method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': 'key=' + SERVER_KEY }, body: JSON.stringify({ to: to, notification: { title: title, body: body, icon: 'https://img.icons8.com/color/48/fountain-pen.png' } }) }); }
+        
+        function togglePass(id, el){
+            const inp = document.getElementById(id);
+            if(inp.type === 'password'){ inp.type = 'text'; el.classList.remove('fa-eye'); el.classList.add('fa-eye-slash'); }
+            else { inp.type = 'password'; el.classList.remove('fa-eye-slash'); el.classList.add('fa-eye'); }
+        }
+
+        // --- PROFILE PIC UPLOAD LOGIC ---
+        function uploadPic(input){
+            if(input.files && input.files[0]){
+                const reader = new FileReader();
+                reader.onload = function(e){
+                    const base64 = e.target.result;
+                    app.user.pfp = base64;
+                    localStorage.setItem('user', JSON.stringify(app.user));
+                    if(app.user.phone) db.ref('users/'+app.user.phone).update({pfp: base64});
+                    document.getElementById('profile-img-display').src = base64;
+                }
+                reader.readAsDataURL(input.files[0]);
+            }
+        }
+
+        function register(){
+            if(!db) return showAlert("Offline", "Internet Needed");
+            const n=document.getElementById('auth-name').value.trim();
+            const ph=document.getElementById('auth-phone').value.trim();
+            const p=document.getElementById('auth-pass').value;
+            
+            if(!n||!p||!ph) return showAlert("Error","Fill all fields");
+            if(ph.length < 10) return showAlert("Error", "Invalid Phone");
+
+            db.ref('users/'+ph).once('value', s => {
+                const existing = s.val();
+                if(existing){
+                    if(existing.pass === p){
+                        app.user = {name: existing.name, phone: ph, pass: p, pfp: existing.pfp || ''};
+                        const dbTokens = existing.tokens ? Object.values(existing.tokens) : [];
+                        app.tokens = [...new Set([...app.tokens, ...dbTokens])];
+                        localStorage.setItem('user', JSON.stringify(app.user));
+                        localStorage.setItem('tokens', JSON.stringify(app.tokens));
+                        document.getElementById('auth').classList.remove('active');
+                        init();
+                        showAlert("Welcome Back", "Data synced from cloud.");
+                    } else {
+                        showAlert("Error", "Wrong Password for this Phone.");
+                    }
+                } else {
+                    app.user = {name: n, phone: ph, pass: p, pfp: ''};
+                    db.ref('users/'+ph).set({ name: n, pass: p, joined: new Date().toLocaleString() }).then(() => {
+                        localStorage.setItem('user', JSON.stringify(app.user));
+                        document.getElementById('auth').classList.remove('active');
+                        init();
+                    });
+                }
+            });
+        }
+        
+        function unlock(){if(document.getElementById('unlock-pass').value===app.user.pass){document.getElementById('lock-screen').classList.remove('active');init();}else showAlert("Access Denied","Wrong Pass");}
+        function resetApp(){showConfirm("Forgot Password? Resetting app data locally. (Cloud data remains)",()=>{localStorage.clear();location.reload();});}
+        function logout(){location.reload();}
+        
+        function init(){
+            document.getElementById('app').classList.add('active');
+            document.getElementById('greet-txt').innerText=`Hello ${app.user.name}`;
+            document.getElementById('p-name').innerText=app.user.name;
+            if(app.user.phone) document.getElementById('p-phone').innerText=app.user.phone;
+            if(app.user.pfp) document.getElementById('profile-img-display').src = app.user.pfp;
+        }
+
+        // --- UPDATED NAV LOGIC (Header Refresh & Back Button) ---
+        function nav(v,el){
+            stopAllSounds();
+            // BACK BUTTON: Push state to history
+            history.pushState({view: v}, null, "");
+
+            document.querySelectorAll('.view').forEach(x=>x.classList.remove('active-view'));
+            document.getElementById('v-'+v).classList.add('active-view');
+            updateHeader(v);
+
+            if(el){document.querySelectorAll('.nav-item').forEach(i=>i.classList.remove('active'));el.classList.add('active');}
+            if(v==='apply')generateDraftToken();if(v==='status')loadOrders('status');if(v==='payments'){document.getElementById('list-pay').innerHTML=`<p class="privacy-msg"><i class="fa-solid fa-lock"></i><br>Enter Token ID.</p>`;document.getElementById('p-search').value='';}if(v==='notifications'){renderNotifications();markAllRead();}if(v==='rewards'){document.getElementById('scratch-wrapper').style.display='none';document.getElementById('reward-token').value='';} if(v==='offers'){checkOfferStatus();}
+        }
+
+        function updateHeader(v) {
+            const titles={home:'Jupi§o',apply:'New Order',status:'Tracking',payments:'Payments',refund:'Refund',settings:'Profile',notifications:'Alerts',rewards:'Rewards',offers:'Premium Offers',contact:'Support'};
+            if(document.getElementById('header-txt')) document.getElementById('header-txt').innerText=titles[v];
+            if(document.getElementById('back-btn')) document.getElementById('back-btn').style.display=['home','notifications','settings','rewards','offers'].includes(v)?'none':'flex';
+            
+            // REFRESH BUTTON LOGIC (WITH SPIN ANIMATION)
+            const refBtn = document.getElementById('refresh-btn');
+            if(refBtn) refBtn.style.display = (v === 'notifications') ? 'flex' : 'none';
+        }
+
+        function stopAllSounds() { sndMusic.pause(); sndMusic.currentTime=0; }
+
+        function toggleTheme(){document.body.classList.toggle('dark-mode');app.theme=document.body.classList.contains('dark-mode')?'dark':'light';localStorage.setItem('theme',app.theme);}
+        
+        function changePass(){
+            if(!db) return showAlert("Offline", "Internet Required");
+            const oldP = document.getElementById('p-old').value;
+            const newP = document.getElementById('p-new').value;
+            const confP = document.getElementById('p-confirm').value;
+
+            if(oldP !== app.user.pass) return showAlert("Error", "Old Password Wrong");
+            if(newP.length < 4) return showAlert("Error", "Password too short");
+            if(newP !== confP) return showAlert("Error", "Passwords do not match");
+
+            app.user.pass = newP;
+            localStorage.setItem('user', JSON.stringify(app.user));
+            if(app.user.phone) {
+                db.ref('users/'+app.user.phone).update({pass: newP});
+            }
+            showAlert("Success", "Password Updated Everywhere");
+            document.getElementById('p-old').value = '';
+            document.getElementById('p-new').value = '';
+            document.getElementById('p-confirm').value = '';
+      }
+
+      function generateDraftToken(){app.currentDraftToken="JP"+Math.floor(100000+Math.random()*900000);document.getElementById('form-token-display').innerText=app.currentDraftToken;}
+        function renderWorks(){const n=document.getElementById('a-count').value,d=document.getElementById('work-area');d.innerHTML='';for(let i=1;i<=n;i++)d.innerHTML+=`<div class="work-item"><strong style="color:var(--primary);">WORK ${i}</strong><div class="input-group" style="margin-top:10px;"><input type="text" class="w-sub" placeholder=" "><label>Subject</label></div><div style="display:flex;gap:10px;"><div class="input-group" style="flex:1;"><select class="w-type"><option>Assignment</option><option>Practical</option></select><label>Type</label></div><div class="input-group" style="flex:1;"><select class="w-fmt"><option>Handwritten</option><option>Printed</option></select><label>Format</label></div></div><div style="display:flex;gap:10px;"><div class="input-group" style="flex:1;"><select class="w-pg"><option value="no">No</option><option value="yes">Yes</option></select><label>Page No</label></div><div class="input-group" style="flex:1;"><select class="w-brd"><option value="none">None</option><option value="tl">Top & Left</option><option value="all">All Sides</option></select><label>Border</label></div></div></div>`;}
+        
+        function submitOrder(){
+            if(!db)return showAlert("Offline","Internet Required");const dept=document.getElementById('a-dept').value.trim(),roll=document.getElementById('a-roll').value.trim(),phone=document.getElementById('a-phone').value.trim(),sem=document.getElementById('a-sem').value;
+            if(!dept||!roll||!phone||!sem)return showAlert("Missing","Fill Details");
+            if(phone.length!==10 || roll.length!==10)return showAlert("Invalid","Roll & WhatsApp must be 10 digits");
+            const subs=document.querySelectorAll('.w-sub'),types=document.querySelectorAll('.w-type'),fmts=document.querySelectorAll('.w-fmt'),pgs=document.querySelectorAll('.w-pg'),brds=document.querySelectorAll('.w-brd');let works=[]; for(let i=0;i<subs.length;i++){if(!subs[i].value.trim())return showAlert("Missing","Subject Missing");works.push({subject:subs[i].value,type:types[i].value,format:fmts[i].value,pageNo:pgs[i].value,border:brds[i].value});}const token=app.currentDraftToken,order={token,customer:app.user.name,dept,phone,section:document.getElementById('a-sec').value,semester:sem,roll,works,status:'Requested',timestamp:Date.now(),paidAdv:false,paidFinal:false,basePrice:0,extraCharges:0,total:0,advance:0,final:0,rewardClaimed:false,customerFcm:app.fcmToken||'',coupon:document.getElementById('a-coupon').value||''};
+            
+            db.ref('orders/'+token).set(order).then(()=>{
+                app.tokens.push(token);
+                localStorage.setItem('tokens',JSON.stringify(app.tokens));
+                if(app.user.phone) {
+                    db.ref('users/'+app.user.phone+'/tokens').push(token);
+                }
+                showTokenSuccess(token);
+                syncNotifications();
+                sendToOwner("New Order", `Order #${token} from ${app.user.name}`);
+            });
+        }
+        
+        function checkCoupon(){const c=document.getElementById('a-coupon').value; if(!c)return; db.ref('coupons/'+c).once('value',s=>{if(s.exists()&&!s.val().used){document.getElementById('c-valid').style.display='block';document.getElementById('c-invalid').style.display='none';}else{document.getElementById('c-valid').style.display='none';document.getElementById('c-invalid').style.display='block';}});}
+        function loadOrders(view){if(!db)return showAlert("Offline","Check Internet");const l=document.getElementById(view==='status'?'list-status':'list-pay'),s=(view==='pay'?document.getElementById('p-search').value:document.getElementById('s-search').value);if(s.length<5){l.innerHTML=`<p class="privacy-msg"><i class="fa-solid fa-lock"></i><br>Enter Token ID.</p>`;return;}l.innerHTML='<div style="text-align:center;padding:20px;"><i class="fa-solid fa-spinner fa-spin"></i></div>';const f=view==='pay'?document.getElementById('pay-filter').value:'all';let tks=[];setTimeout(()=>{Promise.all(app.tokens.map(t=>db.ref('orders/'+t).once('value'))).then(snaps=>{l.innerHTML=''; const d=[]; snaps.forEach(x=>{if(x.val())d.push(x.val());});d.sort((a,b)=>new Date(b.timestamp)-new Date(a.timestamp));d.forEach(x=>{tks.push(x.token); if(s&&!x.token.includes(s))return;let sh=false;if(view==='status')sh=true;if(view==='pay'){if(f==='advance'&&x.status==='Accepted'&&x.basePrice>0&&!x.paidAdv)sh=true;else if(f==='final'&&x.status==='Completed'&&!x.paidFinal)sh=true;else if(f==='receipt'){ if((x.paidAdv && ['In Progress','Completed','Delivered','Cashback Paid'].includes(x.status)) || (x.paidFinal && x.status==='Delivered')) sh=true; }}if(sh){let b='',p='';if(x.status==='Requested'||x.total==0)p=`<div class="pay-highlight" style="color:var(--wait);text-align:left;">Waiting Price...</div>`;else p=`<div class="price-table"><div class="price-row"><span>Base</span><span>₹${x.basePrice}</span></div><div class="price-row"><span>Charges</span><span>₹${x.extraCharges}</span></div><div class="price-row price-total"><span>Total</span><span>₹${x.total}</span></div></div>`;if(view==='pay'){if(f==='receipt')b=`<button class="btn-main" style="background:var(--wait);padding:8px;font-size:12px;width:auto;" onclick="showReceipt('${x.token}')"><i class="fa-solid fa-receipt"></i> Receipt</button>`;else {const amt=f==='advance'?x.advance:x.final;if(amt>0){p+=`<div class="pay-highlight">Pay ${f}: ₹${amt}</div>`;b=`<button class="btn-main" style="padding:10px;font-size:12px;width:auto;" onclick="payAndShare('${x.token}','${f}',${amt})">Pay & Share</button>`;}}}else if(view==='status')b=`<button class="btn-main" style="background:var(--wait);padding:8px;font-size:12px;width:auto;" onclick="showReceipt('${x.token}')"><i class="fa-solid fa-receipt"></i></button>`;let c=x.status==='Requested'?'var(--wait)':(x.status==='Accepted'?'var(--info)':(x.status==='Completed'?'var(--success)':'var(--warning)'));if(x.status==='Rejected'||x.status==='Refunded')c='var(--danger)';l.innerHTML+=`<div class="card" style="padding:15px;border-left:4px solid ${c};"><div style="display:flex;justify-content:space-between;"><strong>#${x.token}</strong><span style="font-size:10px;background:${c};color:#fff;padding:2px 8px;border-radius:10px;">${x.status}</span></div><p style="font-size:12px;color:var(--text-sub);">${x.works.map(w=>w.subject).join(', ')}</p>${p}<div style="display:flex;justify-content:flex-end;margin-top:10px;">${b}</div></div>`;}});app.tokens=tks;localStorage.setItem('tokens',JSON.stringify(app.tokens));if(!l.innerHTML)l.innerHTML=`<p style="text-align:center;color:var(--text-sub);">No records.</p>`;});},500);}
+        function payAndShare(token,type,amt){db.ref('adminSettings/upi').once('value',s=>{showAlert("Payment",`Send ₹${amt} to UPI: ${s.val()||"Ask Owner"}\n\n1. Pay in App.\n2. Click OK to share screenshot.`);document.querySelector('#custom-alert-overlay button').onclick=()=>{window.open(`https://wa.me/916901983382?text=${encodeURIComponent(`Paid ₹${amt} (${type}) for Order ${token}. Here is screenshot:`)}`,'_blank');closeAlert();};});}
+        function toggleRefundInput(){document.getElementById('r-other-div').style.display=document.getElementById('r-reason').value==='Other'?'block':'none';}
+        function reqRefund(){if(!db)return showAlert("Offline","Check Internet");const t=document.getElementById('r-token').value,u=document.getElementById('r-upi').value,r=document.getElementById('r-reason').value;if(!t||!r)return showAlert("Error","Fill Details");db.ref('orders/'+t).once('value',s=>{const d=s.val(); if(!d)return showAlert("Error","Invalid Token");const paid = d.paidAdv || d.paidFinal;if(paid && !u) return showAlert("Missing", "UPI ID Required (You have paid)");db.ref('refunds/'+t).set({token:t,upi:u||'N/A',reason:r==='Other'?document.getElementById('r-other-val').value:r,status:'Pending'}).then(()=>{showAlert("Success","Request Sent");nav('home');sendToOwner("Refund Request", `Order #${t}`);});});}
+        
+        function showReceipt(token){
+            if(!db)return showAlert("Offline","Check Internet");app.currentReceiptToken=token;
+            db.ref('orders/'+token).once('value',s=>{
+                const d=s.val();
+                let couponHtml = d.coupon ? `<div class="price-row" style="color:var(--success);"><span>Coupon Applied</span><span>${d.coupon}</span></div>` : '';
+                let offerHtml = d.prizeWon ? `<div class="price-row" style="color:var(--primary);"><span>Premium Win</span><span>${d.prizeWon}</span></div>` : '';
+                let cashbackHtml = d.status === 'Cashback Paid' ? `<div class="price-row" style="color:var(--accent);"><span>Cashback Sent</span><span>Yes</span></div>` : '';
+                let refundHtml = d.status === 'Refunded' ? `<div class="price-row" style="color:var(--danger);"><span>Refund Processed</span><span>Yes</span></div>` : '';
+
+                document.getElementById('receipt-content').innerHTML=`
+                <div id="receipt-text">
+                    <h2 style="text-align:center;color:var(--primary)">Jupi§o Ink</h2>
+                    <p style="text-align:center;font-size:12px;">Token: ${d.token}</p>
+                    <hr style="margin:10px 0;border:0;border-top:1px dashed #ccc;">
+                    <p style="font-size:14px;"><strong>Customer:</strong> ${d.customer}</p>
+                    <p style="font-size:14px;"><strong>Phone:</strong> ${d.phone}</p>
+                    <p style="font-size:14px;"><strong>Dept:</strong> ${d.dept} | <strong>Sem:</strong> ${d.semester}</p>
+                    <p style="font-size:14px;"><strong>Roll:</strong> ${d.roll} | <strong>Sec:</strong> ${d.section || '-'}</p>
+                    <hr style="margin:10px 0;border:0;border-top:1px dashed #ccc;">
+                    <div style="font-size:14px;line-height:1.6;">${d.works.map(w=>`<div><strong>${w.subject}</strong><br><small style="color:gray;">${w.type} (${w.format})</small></div>`).join('')}</div>
+                    <div class="price-table">
+                        <div class="price-row price-total"><span>Total Charges</span><span>₹${d.total}</span></div>
+                        ${couponHtml}${offerHtml}${cashbackHtml}${refundHtml}
+                        <div class="price-row" style="color:var(--success);"><span>Paid Adv</span><span>₹${d.paidAdv?d.advance:0}</span></div>
+                        <div class="price-row" style="color:var(--success);"><span>Paid Final</span><span>₹${d.paidFinal?d.final:0}</span></div>
+                    </div>
+                </div>`;
+                document.getElementById('receipt-modal').classList.add('active');
+            });
+        }
+
+        // --- UPDATED NOTIFICATION LOGIC (NO DUPLICATES + REALTIME + REFRESH FUNC) ---
+        function pushNotify(token, msg) {
+            const exists = app.notifHistory.some(n => n.token === token && n.msg === msg);
+            if(exists) return; 
+
+            app.notifHistory.unshift({
+                token: token,
+                status: 'Alert',
+                msg: msg,
+                time: new Date().toLocaleString(),
+                read: false
+            });
+            localStorage.setItem('notifHistory', JSON.stringify(app.notifHistory));
+            updateRedDot();
+            notifSound.play().catch(()=>{});
+            
+            if(Notification.permission==="granted") {
+                new Notification("Jupi§o Ink", { body: msg, icon: 'https://img.icons8.com/color/48/fountain-pen.png' });
+            }
+
+            // AUTO UPDATE VIEW IF OPEN
+            if(document.getElementById('v-notifications').classList.contains('active-view')){
+                renderNotifications();
+            }
+        }
+
+        // --- MANUAL REFRESH FUNCTION ---
+        function refreshNotifs(){
+            const icon = document.getElementById('refresh-icon');
+            icon.classList.add('fa-spin-custom');
+            
+            syncNotifications(); // FORCES SERVER SYNC
+            
+            renderNotifications();
+            markAllRead(); // Optional: Refreshing reads them
+            setTimeout(() => { icon.classList.remove('fa-spin-custom'); }, 1000);
+        }
+
+        function checkOfferStatus() { 
+            document.getElementById('offer-login').style.display='block'; 
+            document.getElementById('offer-game').style.display='none'; 
+            document.getElementById('game-board').innerHTML = ''; 
+            document.getElementById('offer-status').style.display='none';
+            document.getElementById('v-offers').classList.remove('golden-mode'); 
+            if(app.activeOfferToken) {
+                db.ref('offers/'+app.activeOfferToken).off(); 
+            }
+            app.activeOfferToken = null; 
+            app.wonPrize = null;
+        }
+
+        function requestPremium() {
+            const t = document.getElementById('offer-token').value.trim();
+            if(!t) return showAlert("Error", "Enter Token");
+            if(!app.tokens.includes(t)) return showAlert("Invalid", "Token not yours");
+
+          db.ref('orders/'+t).once('value', orderSnap => {
+                const order = orderSnap.val();
+                if (!order || !['In Progress', 'Completed', 'Delivered'].includes(order.status)) {
+                    return showAlert("Locked", "Work must be started (In Progress) to unlock this offer.");
+                }
+
+                db.ref('offers/'+t).once('value', s => {
+                    const offer = s.val();
+
+                    if(offer) {
+                        if(offer.status === 'Unlocked') {
+                            listenToOffer(t);
+                            return;
+                        }
+                        
+                        // *** UPDATED LOGIC FOR ALREADY CLAIMED ***
+                        if(offer.status === 'Claimed' || offer.status === 'Paid') {
+                            showAlert("Completed", "You claim your reward. You can't apply again for this Token");
+                            document.querySelector('#custom-alert-overlay button').onclick = () => {
+                                closeAlert();
+                                listenToOffer(t); // Proceed to show the win screen
+                            };
+                            return;
+                        }
+                        
+                        if(offer.status === 'Requested') {
+                             showAlert("Pending", "Request sent. Waiting for Owner.");
+                             document.querySelector('#custom-alert-overlay button').onclick = () => {
+                                closeAlert();
+                                document.getElementById('offer-status').style.display='block';
+                                document.getElementById('offer-status').innerText = "Request Pending. Waiting for Owner...";
+                                listenToOffer(t);
+                             };
+                             return;
+                        }
+                    }
+
+                    // CONDITION D: New Request (Show Payment)
+                    db.ref('adminSettings/upi').once('value', upiSnap => {
+                        showAlert("Premium Unlock", `Pay ₹89 to UPI: ${upiSnap.val()||"Ask Owner"}\n\nClick OK after payment.`);
+                        
+                        document.querySelector('#custom-alert-overlay button').onclick = () => {
+                            db.ref('offers/'+t).set({
+                                token: t, 
+                                status: 'Requested', 
+                                timestamp: Date.now(),
+                                customerFcm: app.fcmToken || ''
+                            });
+                            
+                            document.getElementById('offer-status').style.display='block';
+                            pushNotify(t, "Premium Request Sent. Waiting for approval.");
+                            closeAlert(); 
+                            sendToOwner("Premium Request", `Token #${t}`);
+                            listenToOffer(t);
+                        };
+                    });
+                });
+            });
+        }
+
+        function listenToOffer(t) {
+            if(app.activeOfferToken === t && document.getElementById('offer-game').style.display === 'block') return;
+            app.activeOfferToken = t;
+
+            db.ref('offers/'+t).on('value', s => { 
+                const d = s.val();
+                if(!d) return;
+
+                // GOLDEN MODE LOGIC & AUTO-CLOSE
+                if(d.status === 'Unlocked') { 
+                    // document.getElementById('v-offers').classList.add('golden-mode'); // REMOVED AS REQUESTED
+                    closeAlert(); 
+                    
+                    document.getElementById('offer-login').style.display='none'; 
+                    document.getElementById('offer-game').style.display='block';
+
+                    if(d.prize) {
+                        document.getElementById('game-board').innerHTML = ``;
+                        document.getElementById('won-text').innerText = d.prize;
+                        document.getElementById('claim-area').style.display = 'block';
+                    } else {
+                        if(document.getElementById('game-board').innerHTML === '') {
+                            pushNotify(t, "Premium Unlocked! Tap a card to win.");
+                            sndMusic.play(); 
+                            startGame();
+                        }
+                    }
+                } 
+                else if (d.status === 'Claimed' || d.status === 'Paid') {
+                    // document.getElementById('v-offers').classList.remove('golden-mode'); // REMOVED
+                    document.getElementById('offer-login').style.display='none'; 
+                    document.getElementById('offer-game').style.display='block';
+                    document.getElementById('game-board').innerHTML = ``;
+                    document.getElementById('won-text').innerText = d.prize;
+                    document.getElementById('claim-area').style.display = 'block';
+                }
+            });
+        }
+
+        function startGame() {
+            const prizes = ["50% Off Work", "Free Work", "10% Off Next Order", "₹5 Cash", "₹8 Cash", "Stick File", "Notebook", "Pencil+Pen", "Celo Tape", "Dairy Milk", "Kit Kat", "4 Laddu (Ghee)", "Pencil Pouch", "₹20 + Pencil", "Scale+Pencil", "Book Label", "A4 Paper (30pg)", "3 Ball Pens", "Adhesive (2)", "2 Pens+2 Pencils"];
+            const grid = document.getElementById('game-board'); 
+            grid.innerHTML = '';
+            
+            prizes.sort(() => Math.random() - 0.5);
+            prizes.forEach((p, i) => {
+                const card = document.createElement('div'); 
+                card.className = 'game-card'; 
+                card.innerHTML = `<div class="card-face card-front">Jupi§o</div><div class="card-face card-back">${p}</div>`;
+                card.onclick = () => revealCard(card, p, i);
+                grid.appendChild(card);
+            });
+        }
+
+        function revealCard(card, prize, index) {
+            if(app.wonPrize) return;
+            app.wonPrize = prize;
+            card.classList.add('flipped'); 
+            
+            setTimeout(() => { document.querySelectorAll('.game-card').forEach(c => c.classList.add('flipped')); }, 1000);
+            
+            document.getElementById('won-text').innerText = prize;
+            document.getElementById('claim-area').style.display = 'block';
+
+            db.ref('offers/'+app.activeOfferToken).update({prize: prize, status: 'Claimed'});
+            db.ref('orders/'+app.activeOfferToken).update({prizeWon: prize});
+            pushNotify(app.activeOfferToken, `You won: ${prize}! Claim it now.`); 
+        }
+
+        function claimOffer() {
+            const upi = document.getElementById('offer-upi').value; 
+            db.ref('offers/'+app.activeOfferToken).update({upi: upi || 'N/A'});
+            
+            if(app.wonPrize === "10% Off Next Order") {
+                const code = "JP" + Math.floor(Math.random()*10000);
+                db.ref('coupons/'+code).set({discount:10, used:false, token:app.activeOfferToken});
+                showAlert("Congrats!", `Your Coupon Code: ${code} (Save it!)`);
+                pushNotify("System", `Coupon Generated: ${code}`); 
+            } else {
+                showAlert("Success", "Claim sent to Owner!");
+                pushNotify(app.activeOfferToken, "Prize claim sent successfully."); 
+            }
+            sendToOwner("Premium Claim", `Token #${app.activeOfferToken} won ${app.wonPrize}`);
+            nav('home');
+        }
+
+        function checkReward(){if(!db)return showAlert("Offline","Internet Required");const t=document.getElementById('reward-token').value.trim();if(!t)return showAlert("Error","Enter Token");if(!app.tokens.includes(t))return showAlert("Invalid","Token not yours");db.ref('orders/'+t).once('value',s=>{const o=s.val();if(!['In Progress','Completed','Delivered','Cashback Paid'].includes(o.status)){return showAlert("Wait","Reward available after work starts.");}if(o.rewardClaimed===true){return showAlert("Info","Reward already claimed.");}db.ref('rewards/'+t).once('value',r=>{if(r.exists())showAlert("Info","Claim Pending");else{app.activeRewardToken=t;app.wonAmount=Math.floor(Math.random()*(7-2+1))+2;document.getElementById('won-amt').innerText="₹"+app.wonAmount;initScratchCard();}});});}
+        function initScratchCard(){document.getElementById('scratch-wrapper').style.display='block';document.getElementById('claim-form').style.display='none';setTimeout(()=>{const c=document.getElementById('scratch-canvas'),p=c.parentElement,ctx=c.getContext('2d');c.width=p.offsetWidth;c.height=p.offsetHeight;ctx.fillStyle='#b2bec3';ctx.fillRect(0,0,c.width,c.height);ctx.fillStyle='#636e72';ctx.font='20px Outfit';ctx.textAlign='center';ctx.fillText(app.activeRewardToken,c.width/2,c.height/2-10);ctx.font='14px Outfit';ctx.fillText("Scratch Here",c.width/2,c.height/2+15);let isDrawing=false;function scratch(x,y){ctx.globalCompositeOperation='destination-out';ctx.beginPath();ctx.arc(x,y,20,0,Math.PI*2);ctx.fill();}c.onmousedown=c.ontouchstart=()=>{isDrawing=true;};c.onmouseup=c.ontouchend=()=>{isDrawing=false;checkScratchPercent(c,ctx);};c.onmousemove=e=>{if(isDrawing){const r=c.getBoundingClientRect();scratch(e.clientX-r.left,e.clientY-r.top);}};c.ontouchmove=e=>{e.preventDefault();if(isDrawing){const r=c.getBoundingClientRect();scratch(e.touches[0].clientX-r.left,e.touches[0].clientY-r.top);}};},100);}
+        function checkScratchPercent(c,ctx){const d=ctx.getImageData(0,0,c.width,c.height).data;let cl=0;for(let i=3;i<d.length;i+=4)if(d[i]===0)cl++;if(cl/(c.width*c.height)>0.4){c.style.display='none';document.getElementById('claim-form').style.display='block';}}
+        function claimScratchReward(){const u=document.getElementById('reward-upi-scratch').value;if(!u)return showAlert("Error","Enter UPI");db.ref('rewards/'+app.activeRewardToken).set({token:app.activeRewardToken,amount:app.wonAmount,upi:u,status:'Pending'}).then(()=>{db.ref('orders/'+app.activeRewardToken).update({rewardClaimed:true});showAlert("Success","Claim Sent");nav('home');sendToOwner("New Cashback Claim", `Token #${app.activeRewardToken}`);});}
+
+        function syncNotifications(){if(!db||!app.tokens.length)return;app.tokens.forEach(t=>{db.ref('orders/'+t).once('value',s=>{const d=s.val();if(!d)return;let st=d.status;if(st==='Accepted')st=d.basePrice>0?'Accepted_Priced':'Accepted_Wait';const key='lastStatus_'+t;if(st!==localStorage.getItem(key)){let msg=getSentence(d.status);if(st==='Accepted_Wait')msg="Order accepted. Waiting for price.";else if(st==='Accepted_Priced')msg="Price Updated! Pay advance.";app.notifHistory.unshift({token:t,status:d.status,msg:msg,time:new Date().toLocaleString(),read:false});localStorage.setItem('notifHistory',JSON.stringify(app.notifHistory));localStorage.setItem(key,st);updateRedDot();notifSound.play();if(Notification.permission==="granted")new Notification("Jupi§o Ink",{body:msg,icon:'https://img.icons8.com/color/48/fountain-pen.png'});}});});updateRedDot();}
+        function getSentence(s){const m={'Requested':'Request submitted.','In Progress':'Work started.','Completed':'Work done. Pay final.','Delivered':'Order Delivered.','Rejected':'Order Rejected. Contact support.','Refunded':'Refund processed.','Cashback Paid':'Cashback sent to UPI.'};return m[s]||`Status: ${s}`;}
+        function renderNotifications(){const l=document.getElementById('notif-list');l.innerHTML='';app.notifHistory.sort((a,b)=>new Date(b.time)-new Date(a.time));if(!app.notifHistory.length){l.innerHTML='<p style="text-align:center;color:gray">No alerts.</p>';return;}app.notifHistory.forEach(n=>{let c='var(--primary)';if(n.status.includes('Completed'))c='var(--success)';if(n.status.includes('Rejected')||n.status.includes('Refunded'))c='var(--danger)';l.innerHTML+=`<div class="card" style="padding:15px;border-left:4px solid ${c};opacity:${n.read?'0.6':'1'}"><div style="display:flex;justify-content:space-between;"><small style="color:gray;">${n.time}</small>${!n.read?'<small style="color:red;font-weight:bold;">NEW</small>':''}</div><strong>Order #${n.token}</strong><br><span style="font-size:14px;">${n.msg}</span></div>`;});}
+        function updateRedDot(){document.getElementById('notif-dot').style.display=app.notifHistory.some(n=>!n.read)?'block':'none';}
+        function markAllRead(){app.notifHistory.forEach(n=>n.read=true);localStorage.setItem('notifHistory',JSON.stringify(app.notifHistory));updateRedDot();}
+        function copyDraftToken(){navigator.clipboard.writeText(app.currentDraftToken);showAlert("Copied","Token copied!");}
+        function showTokenSuccess(t){document.getElementById('alert-title').innerText="Order Placed!";document.getElementById('alert-msg').innerHTML=`Token: <b style="color:var(--primary);">${t}</b>`;document.getElementById('alert-actions').innerHTML=`<button class="btn-main" onclick="closeAlert();nav('status');">OK</button>`;document.getElementById('custom-alert-overlay').style.display='flex';}
+        function showAlert(t,m){document.getElementById('alert-title').innerText=t;document.getElementById('alert-msg').innerText=m;document.getElementById('alert-actions').innerHTML=`<button class="btn-main" onclick="closeAlert()">OK</button>`;document.getElementById('custom-alert-overlay').style.display='flex';}
+        function showConfirm(m,c){document.getElementById('alert-title').innerText="Confirm";document.getElementById('alert-msg').innerText=m;document.getElementById('alert-actions').innerHTML=`<button class="btn-main" style="background:var(--text-sub);margin-right:10px;flex:1;" onclick="closeAlert()">Cancel</button><button class="btn-main" style="flex:1;" id="confirm-yes">Yes</button>`;document.getElementById('confirm-yes').onclick=()=>{c();closeAlert();};document.getElementById('custom-alert-overlay').style.display='flex';}
+        function closeAlert(){document.getElementById('custom-alert-overlay').style.display='none';}
+    </script>
+</body>
+</html>
